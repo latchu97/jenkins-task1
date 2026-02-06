@@ -1,36 +1,24 @@
 pipeline {
   agent none
 
-  triggers {
-    githubPush()
-  }
-
-  options {
-    skipDefaultCheckout(true)
-  }
+  triggers { githubPush() }
 
   environment {
+    REPO_URL = "https://github.com/latchu97/jenkins-task1.git"
+    CREDS    = "62ef1e9c-a975-4175-a0cb-217070776f9e"
     TEST_DIR = "C:\\deploy\\test"
     PROD_DIR = "C:\\deploy\\prod"
   }
 
   stages {
-    stage('Checkout develop') {
-      agent any
-      steps {
-        checkout([$class: 'GitSCM',
-          branches: [[name: '*/develop']],
-          userRemoteConfigs: [[
-            url: 'https://github.com/latchu97/jenkins-task1.git',
-            credentialsId: '62ef1e9c-a975-4175-a0cb-217070776f9e' // <-- your credential id
-          ]]
-        ])
-      }
-    }
-
     stage('Deploy to TEST') {
       agent { label 'test' }
       steps {
+        checkout([$class: 'GitSCM',
+          branches: [[name: '*/develop']],
+          userRemoteConfigs: [[url: env.REPO_URL, credentialsId: env.CREDS]]
+        ])
+
         bat """
           echo Deploying to TEST...
           if not exist "%TEST_DIR%" mkdir "%TEST_DIR%"
@@ -43,6 +31,11 @@ pipeline {
     stage('Deploy to PROD (only if TEST success)') {
       agent { label 'prod' }
       steps {
+        checkout([$class: 'GitSCM',
+          branches: [[name: '*/develop']],
+          userRemoteConfigs: [[url: env.REPO_URL, credentialsId: env.CREDS]]
+        ])
+
         bat """
           echo Deploying to PROD...
           if not exist "%PROD_DIR%" mkdir "%PROD_DIR%"
