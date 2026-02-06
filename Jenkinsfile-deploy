@@ -1,0 +1,55 @@
+pipeline {
+  agent none
+
+  triggers {
+    githubPush()
+  }
+
+  options {
+    skipDefaultCheckout(true)
+  }
+
+  environment {
+    TEST_DIR = "C:\\deploy\\test"
+    PROD_DIR = "C:\\deploy\\prod"
+  }
+
+  stages {
+    stage('Checkout develop') {
+      agent any
+      steps {
+        checkout([$class: 'GitSCM',
+          branches: [[name: '*/develop']],
+          userRemoteConfigs: [[
+            url: 'https://github.com/latchu97/jenkins-task1.git',
+            credentialsId: '62ef1e9c-a975-4175-a0cb-217070776f9e' // <-- your credential id
+          ]]
+        ])
+      }
+    }
+
+    stage('Deploy to TEST') {
+      agent { label 'test' }
+      steps {
+        bat """
+          echo Deploying to TEST...
+          if not exist "%TEST_DIR%" mkdir "%TEST_DIR%"
+          robocopy "%WORKSPACE%" "%TEST_DIR%" /MIR /XD ".git" /R:2 /W:2
+          if %ERRORLEVEL% LEQ 7 (exit 0) else (exit %ERRORLEVEL%)
+        """
+      }
+    }
+
+    stage('Deploy to PROD (only if TEST success)') {
+      agent { label 'prod' }
+      steps {
+        bat """
+          echo Deploying to PROD...
+          if not exist "%PROD_DIR%" mkdir "%PROD_DIR%"
+          robocopy "%WORKSPACE%" "%PROD_DIR%" /MIR /XD ".git" /R:2 /W:2
+          if %ERRORLEVEL% LEQ 7 (exit 0) else (exit %ERRORLEVEL%)
+        """
+      }
+    }
+  }
+}
