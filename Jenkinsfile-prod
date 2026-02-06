@@ -1,0 +1,26 @@
+pipeline {
+  agent { label 'prod' }
+
+  environment {
+    TARGET_DIR = "C:\\deploy\\prod"
+  }
+
+  stages {
+    stage('Checkout master branch') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Copy to PROD folder') {
+      steps {
+        bat '''
+          echo Deploying to PROD...
+          if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
+          robocopy "%WORKSPACE%" "%TARGET_DIR%" /MIR /XD ".git" /R:2 /W:2
+          if %ERRORLEVEL% LEQ 7 (exit 0) else (exit %ERRORLEVEL%)
+        '''
+      }
+    }
+  }
+}
